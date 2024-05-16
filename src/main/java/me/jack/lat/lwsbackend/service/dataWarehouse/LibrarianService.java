@@ -1,0 +1,95 @@
+package me.jack.lat.lwsbackend.service.dataWarehouse;
+
+import me.jack.lat.lwsbackend.util.OracleDBUtil;
+
+import java.sql.Connection;
+import java.sql.PreparedStatement;
+import java.sql.ResultSet;
+import java.sql.SQLException;
+
+public class LibrarianService {
+
+    public double getAverageBooksBorrowedLastQuarter() throws SQLException {
+        String query =
+                "SELECT AVG(book_count) AS average_books_per_user " +
+                        "FROM ( " +
+                        "  SELECT COUNT(*) AS book_count " +
+                        "  FROM FACTLOANEDBOOKS flb " +
+                        "  JOIN DIMTIME dt ON flb.LOANEDATTIMEID = dt.DATEID " +
+                        "  WHERE dt.QUARTER = (SELECT MAX(QUARTER) FROM DIMTIME) " +
+                        "  GROUP BY flb.USERID " +
+                        ")";
+
+        try (Connection connection = OracleDBUtil.getConnection()) {
+            PreparedStatement statement = connection.prepareStatement(query);
+            ResultSet resultSet = statement.executeQuery();
+            if (resultSet.next()) {
+                return resultSet.getDouble("average_books_per_user");
+            }
+        }
+        return 0;
+    }
+
+    public String getMostPopularBookCategoryCurrentlyLoaned() throws SQLException {
+        String query =
+                "SELECT dc.CATEGORYNAME, COUNT(*) AS loan_count " +
+                        "FROM FACTLOANEDBOOKS flb " +
+                        "JOIN DIMBOOKS db ON flb.BOOKID = db.BOOKID " +
+                        "JOIN DIMCATEGORIES dc ON db.BOOKCATEGORYID = dc.CATEGORYID " +
+                        "WHERE flb.RETURNEDATTIMEID IS NULL " +
+                        "GROUP BY dc.CATEGORYNAME " +
+                        "ORDER BY loan_count DESC " +
+                        "FETCH FIRST 1 ROWS ONLY";
+
+        try (Connection connection = OracleDBUtil.getConnection()) {
+            PreparedStatement statement = connection.prepareStatement(query);
+            ResultSet resultSet = statement.executeQuery();
+            if (resultSet.next()) {
+                return resultSet.getString("CATEGORYNAME");
+            }
+        }
+        return null;
+    }
+
+    public String getMostPopularAuthorCurrentlyLoaned() throws SQLException {
+        String query =
+                "SELECT da.AUTHORNAME, COUNT(*) AS loan_count " +
+                        "FROM FACTLOANEDBOOKS flb " +
+                        "JOIN DIMBOOKS db ON flb.BOOKID = db.BOOKID " +
+                        "JOIN DIMAUTHORS da ON db.BOOKAUTHORID = da.AUTHORID " +
+                        "WHERE flb.RETURNEDATTIMEID IS NULL " +
+                        "GROUP BY da.AUTHORNAME " +
+                        "ORDER BY loan_count DESC " +
+                        "FETCH FIRST 1 ROWS ONLY";
+
+        try (Connection connection = OracleDBUtil.getConnection()) {
+            PreparedStatement statement = connection.prepareStatement(query);
+            ResultSet resultSet = statement.executeQuery();
+            if (resultSet.next()) {
+                return resultSet.getString("AUTHORNAME");
+            }
+        }
+        return null;
+    }
+
+    public double getPercentageBooksCurrentlyLoaned() throws SQLException {
+        String query =
+                "SELECT ( " +
+                        "   (SELECT COUNT(*) " +
+                        "    FROM FACTLOANEDBOOKS " +
+                        "    WHERE RETURNEDATTIMEID IS NULL) " +
+                        "   * 100.0 / " +
+                        "   (SELECT COUNT(*) FROM DIMBOOKS) " +
+                        ") AS loaned_books_percentage " +
+                        "FROM DUAL";
+
+        try (Connection connection = OracleDBUtil.getConnection()) {
+            PreparedStatement statement = connection.prepareStatement(query);
+            ResultSet resultSet = statement.executeQuery();
+            if (resultSet.next()) {
+                return resultSet.getDouble("loaned_books_percentage");
+            }
+        }
+        return 0;
+    }
+}
