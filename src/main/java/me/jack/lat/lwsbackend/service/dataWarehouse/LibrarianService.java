@@ -6,6 +6,9 @@ import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
 
 public class LibrarianService {
 
@@ -91,5 +94,29 @@ public class LibrarianService {
             }
         }
         return 0;
+    }
+
+    public HashMap<String, Object>[] getBooksPerCategory() throws SQLException {
+        List<HashMap<String, Object>> categoryCounts = new ArrayList<>();
+
+        String query =
+                "SELECT dc.CATEGORYNAME, COUNT(*) AS bookCount " +
+                        "FROM DIMBOOKS db " +
+                        "JOIN DIMCATEGORIES dc ON db.BOOKCATEGORYID = dc.CATEGORYID " +
+                        "GROUP BY dc.CATEGORYNAME";
+
+        try (Connection connection = OracleDBUtil.getConnection()) {
+            PreparedStatement statement = connection.prepareStatement(query);
+            ResultSet resultSet = statement.executeQuery();
+
+            while (resultSet.next()) {
+                categoryCounts.add(new HashMap<>(){{
+                    put("key", resultSet.getString("CATEGORYNAME"));
+                    put("value", resultSet.getInt("BOOKCOUNT"));
+                }});
+            }
+
+            return categoryCounts.toArray(new HashMap[0]);
+        }
     }
 }
