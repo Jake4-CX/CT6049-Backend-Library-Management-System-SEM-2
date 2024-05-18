@@ -9,7 +9,16 @@ import java.sql.SQLException;
 
 public class ChiefLibrarianService {
 
-    public double getAverageLoanDurationLastYear() throws SQLException {
+    public double getAverageLoanDurationLastDuration(long durationMilliseconds) throws SQLException {
+
+        // Convert milliseconds to days
+        double durationDays = durationMilliseconds / 1000.0 / 60 / 60 / 24;
+
+        // Validate the duration
+        if (durationDays < 0) {
+            throw new IllegalArgumentException("Duration must be a non-negative value");
+        }
+
         String query =
                 "SELECT AVG(EXTRACT(DAY FROM (dt_returned.DATE_TIME - dt_loaned.DATE_TIME)) * 24 * 60 + " +
                         "EXTRACT(HOUR FROM (dt_returned.DATE_TIME - dt_loaned.DATE_TIME)) * 60 + " +
@@ -17,13 +26,15 @@ public class ChiefLibrarianService {
                         "FROM FACTLOANEDBOOKS flb " +
                         "JOIN DIMTIME dt_loaned ON flb.LOANEDATTIMEID = dt_loaned.DATEID " +
                         "JOIN DIMTIME dt_returned ON flb.RETURNEDATTIMEID = dt_returned.DATEID " +
-                        "WHERE dt_loaned.DATE_TIME >= ADD_MONTHS(SYSDATE, -12)";
+                        "WHERE dt_loaned.DATE_TIME >= (SYSDATE - ?)";
 
         try (Connection connection = OracleDBUtil.getConnection()) {
             PreparedStatement statement = connection.prepareStatement(query);
+            // Convert milliseconds to seconds and set the parameter
+            statement.setDouble(1, durationDays);
             ResultSet resultSet = statement.executeQuery();
             if (resultSet.next()) {
-                return resultSet.getDouble("average_loan_duration"); //Time in minutes
+                return resultSet.getDouble("average_loan_duration"); // Time in minutes
             }
         }
         return 0;
