@@ -9,15 +9,25 @@ import java.sql.SQLException;
 
 public class FinanceDirectorService {
 
-    public double getAverageFinesLast30Days() throws SQLException {
+    public double getAverageCostEachFinesPaidLastDuration(long durationMilliseconds) throws SQLException {
+
+        // Convert milliseconds to days
+        double durationDays = durationMilliseconds / 1000.0 / 60 / 60 / 24;
+
+        // Validate the duration
+        if (durationDays < 0) {
+            throw new IllegalArgumentException("Duration must be a non-negative value");
+        }
+
         String query =
                 "SELECT AVG(FINEAMOUNT) AS average_fine " +
                         "FROM FACTLOANEDBOOKS flb " +
                         "JOIN DIMTIME dt ON flb.PAIDATTIMEID = dt.DATEID " +
-                        "WHERE dt.DATE_TIME >= SYSDATE - 30 AND flb.FINEAMOUNT IS NOT NULL";
+                        "WHERE dt.DATE_TIME >= SYSDATE - ? AND flb.FINEAMOUNT IS NOT NULL";
 
         try (Connection connection = OracleDBUtil.getConnection()) {
             PreparedStatement statement = connection.prepareStatement(query);
+            statement.setDouble(1, durationDays);
             ResultSet resultSet = statement.executeQuery();
             if (resultSet.next()) {
                 return resultSet.getDouble("average_fine");

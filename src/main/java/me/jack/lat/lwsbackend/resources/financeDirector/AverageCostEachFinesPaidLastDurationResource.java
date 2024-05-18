@@ -11,18 +11,18 @@ import java.sql.SQLException;
 import java.util.HashMap;
 import java.util.Map;
 
-@Path("/finance-director/average/fines/30days")
-public class AverageFinesLast30DaysResource {
+@Path("/finance-director/average/fines/duration/{duration_milliseconds}")
+public class AverageCostEachFinesPaidLastDurationResource {
 
     @GET
     @RestrictedRoles({User.Role.FINANCE_DIRECTOR})
     @Produces(MediaType.APPLICATION_JSON)
-    public Response getAverageFinesLast30Days() {
+    public Response getAverageCostEachFinesPaidLastDuration(@PathParam("duration_milliseconds") long durationMilliseconds) {
         FinanceDirectorService service = new FinanceDirectorService();
         Map<String, Object> response = new HashMap<>();
 
         try {
-            double result = service.getAverageFinesLast30Days();
+            double result = service.getAverageCostEachFinesPaidLastDuration(durationMilliseconds);
             response.put("message", "success");
             response.put("data", result);
             return Response.ok(response).type(MediaType.APPLICATION_JSON).build();
