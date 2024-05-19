@@ -33,6 +33,36 @@ public class LibrarianService {
         return 0;
     }
 
+    public double getAverageBooksBorrowedLastDuration(long durationMilliseconds) throws SQLException {
+        // Convert milliseconds to days
+        double durationDays = durationMilliseconds / 1000.0 / 60 / 60 / 24;
+
+        // Validate the duration
+        if (durationDays < 0) {
+            throw new IllegalArgumentException("Duration must be a non-negative value");
+        }
+
+        String query =
+                "SELECT AVG(book_count) AS average_books_per_user " +
+                        "FROM ( " +
+                        "  SELECT COUNT(*) AS book_count " +
+                        "  FROM FACTLOANEDBOOKS flb " +
+                        "  JOIN DIMTIME dt ON flb.LOANEDATTIMEID = dt.DATEID " +
+                        "  WHERE dt.DATE_TIME >= (SYSDATE - ?) " +
+                        "  GROUP BY flb.USERID " +
+                        ")";
+
+        try (Connection connection = OracleDBUtil.getConnection()) {
+            PreparedStatement statement = connection.prepareStatement(query);
+            statement.setDouble(1, durationDays);
+            ResultSet resultSet = statement.executeQuery();
+            if (resultSet.next()) {
+                return resultSet.getDouble("average_books_per_user");
+            }
+        }
+        return 0;
+    }
+
     public String getMostPopularBookCategoryCurrentlyLoaned() throws SQLException {
         String query =
                 "SELECT dc.CATEGORYNAME, COUNT(*) AS loan_count " +
